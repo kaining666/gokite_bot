@@ -106,7 +106,7 @@ class gokit_bot(object):
         except Exception as e:
             print('connect error'+ f'{e}')
             return None
-
+    #获取账号信息
     def get_state(self):
         timestamp = self.get_timestamp()
         response = self.send_request(
@@ -117,8 +117,8 @@ class gokit_bot(object):
                 "nonce":timestamp
             }
         )
-        print(response)
-
+        logger.info(response.get("payload", {}).get("userXp",{}))
+    #获取当前社交任务进度
     def mission_success(self):
         response = self.send_request(
             method='GET',
@@ -128,11 +128,9 @@ class gokit_bot(object):
                 "now":self.get_timestamp()
             }
         )
-        logger.info(response)
-        print(response)
+        logger.info(response.get("payload",{}))
 if __name__ == '__main__':
-    bot = gokit_bot(private_key='0xc00116bbb73dbedb8de57c4f2c06958c4df37cb97d49127f65193a9b90c41ad2')
+    bot = gokit_bot(private_key='')
     bot.connect_wallet()
-    bot.get_state()
     bot.mission_success()
     bot.get_state()
