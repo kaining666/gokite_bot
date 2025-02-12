@@ -1,3 +1,4 @@
+import time
 import requests
 from fake_useragent import UserAgent
 from datetime import datetime
@@ -10,13 +11,6 @@ class gokit_bot(object):
     def __init__(self,private_key,proxy=None):
         self.private_key = private_key
         self.proxy = proxy
-        if proxy:
-            self.proxies_conf = {
-                "proxies": {
-                    "http": f"http://{proxy}",
-                    "https": f"http://{proxy}"
-                }
-            }
         user_agent = UserAgent()
         userAgent = user_agent.random
         self.headers = {
@@ -37,30 +31,40 @@ class gokit_bot(object):
             'user-agent': userAgent
         }
         rpc = 'https://mainnet.infura.io/v3/60a69055106440c1b880b64075f46812'
-        self.w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs=self.proxy))
+        self.w3 = Web3(Web3.HTTPProvider(rpc))
         self.session = requests.sessions.session()
 
 
     #发送request请求
-    def send_request(self,method, url, headers=None, params=None, data=None, json_data=None, timeout=10):
-        try:
-            # 发送请求
-            response = requests.request(
-                method=method.upper(),
-                url=url,
-                headers=headers,
-                params=params,
-                data=data,
-                json=json_data,
-                timeout=timeout
-            )
-
+    def send_request(self, method, url, headers=None, params=None, data=None, json_data=None, timeout=10, retries=3, delay=1):
+        attempt = 0
+        while attempt < retries:
             try:
-                return response.json()
-            except Exception as e:
-                return response
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
+                # 发送请求
+                response = requests.request(
+                    method=method.upper(),
+                    url=url,
+                    headers=headers,
+                    params=params,
+                    data=data,
+                    json=json_data,
+                    timeout=timeout,
+                    proxies=self.proxy
+                )
+                response.raise_for_status()  # 如果返回的HTTP状态码不是200，将抛出异常
+                try:
+                    return response.json()  # 尝试将响应转换为JSON
+                except ValueError:  # 如果响应不是有效的JSON
+                    return response.text
+            except requests.exceptions.RequestException as e:  # 捕获requests的所有异常
+                attempt += 1
+                logger.error(f"Request failed (attempt {attempt}/{retries}). Error: {e}")
+                if attempt < retries:
+                    logger.info(f"Retrying in {delay} seconds...")
+                    time.sleep(delay)  # 等待一段时间后再重试
+                else:
+                    logger.error("达到最大重试次数. Request failed.")
+                    raise  # 达到最大重试次数后抛出异常
 
     #获取当前时间戳
     def get_timestamp(self):
@@ -106,6 +110,8 @@ class gokit_bot(object):
         except Exception as e:
             print('connect error'+ f'{e}')
             return None
+
+
     #获取账号信息
     def get_state(self):
         timestamp = self.get_timestamp()
@@ -118,8 +124,12 @@ class gokit_bot(object):
             }
         )
         logger.info(response.get("payload", {}).get("userXp",{}))
+
+
     #获取当前社交任务进度
     def mission_success(self):
+
+        #注册100分任务
         response = self.send_request(
             method='GET',
             url='https://api-kiteai.bonusblock.io/api/kite-ai/missions',
@@ -129,8 +139,15 @@ class gokit_bot(object):
             }
         )
         logger.info(response.get("payload",{}))
-if __name__ == '__main__':
-    bot = gokit_bot(private_key='')
-    bot.connect_wallet()
-    bot.mission_success()
-    bot.get_state()
+
+        #tutorial 50分任务
+        mission1 = self.send_request(
+            method='POST',
+            url = 'https://api-kiteai.bonusblock.io/api/forward-link/go/kiteai-mission-tutorial-1',
+            headers= self.headers,
+            json_data={
+                "now": self.get_timestamp()
+            }
+        )
+        logger.info("tutorial-complete ：" + str(mission1.get("success",{})))
+
