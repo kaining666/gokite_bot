@@ -5,10 +5,11 @@ from datetime import datetime
 from web3 import Web3
 from eth_account.messages import encode_defunct
 from loguru import logger
-
+import json
 
 class gokit_bot(object):
-    def __init__(self,private_key,proxy=None):
+    def __init__(self,address,private_key,proxy=None):
+        self.address = address
         self.private_key = private_key
         self.proxy = proxy
         user_agent = UserAgent()
@@ -55,7 +56,8 @@ class gokit_bot(object):
                 try:
                     return response.json()  # 尝试将响应转换为JSON
                 except ValueError:  # 如果响应不是有效的JSON
-                    return response.text
+                    logger.error("response转换json失败")
+                    return response
             except requests.exceptions.RequestException as e:  # 捕获requests的所有异常
                 attempt += 1
                 logger.error(f"Request failed (attempt {attempt}/{retries}). Error: {e}")
@@ -150,4 +152,7 @@ class gokit_bot(object):
             }
         )
         logger.info("tutorial-complete ：" + str(mission1.get("success",{})))
+
+
+
 
