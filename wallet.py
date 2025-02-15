@@ -19,9 +19,9 @@ class EthereumWallet:
             "private_key": private_key
         }
 
-    def save_wallet(self, data):
+    def save_wallet(self, data,code):
         # 追加模式打开文件并存储新钱包数据
-        wallet_data = str(data["address"]+","+data["private_key"])
+        wallet_data = str(data["address"]+","+data["private_key"]+","+code["ref_code"])
         with open(self.filename, "a") as file:
             file.write(wallet_data + "\n")
         logger.info(f"Wallet data saved to {self.filename}")
