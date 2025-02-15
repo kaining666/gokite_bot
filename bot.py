@@ -5,7 +5,7 @@ from datetime import datetime
 from web3 import Web3
 from eth_account.messages import encode_defunct
 from loguru import logger
-import json
+import re
 
 class gokit_bot(object):
     def __init__(self,address,private_key,proxy=None):
@@ -57,7 +57,7 @@ class gokit_bot(object):
                     return response.json()  # 尝试将响应转换为JSON
                 except ValueError:  # 如果响应不是有效的JSON
                     logger.error("response转换json失败")
-                    return response
+                    return response.text
             except requests.exceptions.RequestException as e:  # 捕获requests的所有异常
                 attempt += 1
                 logger.error(f"Request failed (attempt {attempt}/{retries}). Error: {e}")
@@ -75,7 +75,7 @@ class gokit_bot(object):
         return iso_format
 
 
-    #连接钱包获取登陆token
+    #连接钱包
     def connect_wallet(self):
         try:
             iso_format = self.get_timestamp()
@@ -114,7 +114,7 @@ class gokit_bot(object):
             return None
 
 
-    #获取账号信息
+    #获取账号信息返回xp积分和邀请码
     def get_state(self):
         timestamp = self.get_timestamp()
         response = self.send_request(
@@ -125,8 +125,15 @@ class gokit_bot(object):
                 "nonce":timestamp
             }
         )
-        logger.info(response.get("payload", {}).get("userXp",{}))
-
+        ref_code = response.get("payload", {}).get('account', {})["userId"]
+        userXp = response.get("payload", {}).get("userXp",{})
+        logger.info(f"userXp: {userXp}")
+        logger.info(f"邀请码: {ref_code}")
+        data = {
+            "userXp":userXp,
+            "ref_code":ref_code
+        }
+        return data
 
     #获取当前社交任务进度
     def mission_success(self):
@@ -153,6 +160,55 @@ class gokit_bot(object):
         )
         logger.info("tutorial-complete ：" + str(mission1.get("success",{})))
 
+    #获取页面返回的社交任务的oauth——token
+    def social_link(self,data):
+        oauth = self.send_request(
+            method="POST",
+            url = "https://api-kiteai.bonusblock.io/api/auth/social-link",
+            headers= self.headers,
+            json_data={
+                "returnTo": "https://testnet.gokite.ai/quests",
+                "social": f"{data}"
+            }
+        )
+        payload = oauth["payload"]
+        # 使用正则表达式提取 oauth_token
+        match = re.search(r"oauth_token=([A-Za-z0-9_-]+)", payload)
+        if match:
+            oauth_token = match.group(1)
+            return oauth_token
+        else:
+            logger.error("oauth_token not found")
+            return None
+    #电报任务（假提交）
+    def tel_mission(self):
+        response = self.send_request(
+            method='POST',
+            headers=self.headers,
+            url='https://api-kiteai.bonusblock.io/api/forward-link/go/kiteai-mission-social-3',
+            json_data={
+                "now": self.get_timestamp(),
+                "payload":"https://t.me/GoKiteAI",
+                "success":'true'
+            }
 
+        )
+        return response
 
-
+    #将user_token和验证过后的vf_token返回给页面api进行验证
+    def submit_x_token(self,social,oauth_token,oauth_verifier):
+        response = self.send_request(
+            method="GET",
+            headers=self.headers,
+            url=f'https://callback.bonusblock.io/oauth/callback/{social}',
+            params={
+                "client":"kiteai",
+                "returnTo":"https://testnet.gokite.ai/quests",
+                "oauth_token":oauth_token,
+                "oauth_verifier":oauth_verifier
+            },
+            json_data={
+                "now":self.get_timestamp()
+            }
+        )
+        print(response)
