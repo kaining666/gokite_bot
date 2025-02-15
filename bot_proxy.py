@@ -43,6 +43,7 @@ class ProxyChecker:
                 self.used_proxies.add(proxy)
                 return valid_proxy
             else:
+                self.used_proxies.add(proxy)
                 available_proxies.remove(proxy)
 
         raise Exception("No valid proxies found.")
