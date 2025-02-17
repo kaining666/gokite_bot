@@ -11,9 +11,10 @@ class EthereumWallet:
 
         # 获取地址和私钥
         address = account.address
-        logger.info(f"生成钱包地址为：{address}")
+
         private_key = account.key.hex()
 
+        logger.info(f"生成钱包地址为：{address},私钥为：{private_key}")
         return {
             "address": address,
             "private_key": private_key
