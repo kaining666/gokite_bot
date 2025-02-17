@@ -50,7 +50,8 @@ class gokit_bot(object):
                     data=data,
                     json=json_data,
                     timeout=timeout,
-                    proxies=self.proxy
+                    proxies=self.proxy,
+                    allow_redirects= True
                 )
                 response.raise_for_status()  # 如果返回的HTTP状态码不是200，将抛出异常
                 try:
@@ -125,6 +126,7 @@ class gokit_bot(object):
                 "nonce":timestamp
             }
         )
+
         ref_code = response.get("payload", {}).get('account', {})["userId"]
         userXp = response.get("payload", {}).get("userXp",{})
         logger.info(f"userXp: {userXp}")
@@ -197,18 +199,23 @@ class gokit_bot(object):
 
     #将user_token和验证过后的vf_token返回给页面api进行验证
     def submit_x_token(self,social,oauth_token,oauth_verifier):
-        response = self.send_request(
-            method="GET",
-            headers=self.headers,
-            url=f'https://callback.bonusblock.io/oauth/callback/{social}',
-            params={
-                "client":"kiteai",
-                "returnTo":"https://testnet.gokite.ai/quests",
-                "oauth_token":oauth_token,
-                "oauth_verifier":oauth_verifier
-            },
-            json_data={
-                "now":self.get_timestamp()
-            }
-        )
-        print(response)
+        try:
+            response = self.send_request(
+                method="GET",
+                headers=self.headers,
+                url=f'https://callback.bonusblock.io/oauth/callback/{social}',
+                params={
+                    "client":"kiteai",
+                    "returnTo":"https://testnet.gokite.ai/quests",
+                    "oauth_token":oauth_token,
+                    "oauth_verifier":oauth_verifier
+                },
+                json_data={
+                    "now":self.get_timestamp()
+                }
+            )
+            logger.success("验证twitter成功")
+            return True
+        except:
+            logger.error('验证twitter失败')
+            return False
