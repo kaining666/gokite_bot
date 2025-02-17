@@ -16,7 +16,7 @@ def register():
         try:
             proxy = checker.get_unique_proxy()
             twitter_token = provider.get_data()
-            xauth = XAuth(auth_token=twitter_token)
+            xauth = XAuth(auth_token=twitter_token,proxy=proxy)
             bot = gokit_bot(address=wallet_data["address"],private_key=wallet_data["private_key"], proxy=proxy)
             bot.connect_wallet()
             #50分

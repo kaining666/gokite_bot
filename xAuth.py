@@ -19,11 +19,12 @@ class XAuth:
         326: "LOCKED"
     }
 
-    def __init__(self, auth_token: str):
+    def __init__(self, auth_token: str,proxy=None):
         """初始化XAuth实例"""
         self.auth_token = auth_token
         self.session = self._create_session()
         self.session2 = self._create_session(include_twitter_headers=False)
+        self.proxy = proxy
 
     def _create_session(self, include_twitter_headers: bool = True) -> requests.Session:
         """创建配置好的requests session"""
@@ -42,7 +43,7 @@ class XAuth:
                 "x-twitter-active-user": "yes",
                 "authorization": self.AUTHORIZATION
             })
-
+        session.proxies=self.proxy
         session.headers.update(headers)
         session.cookies.set("auth_token", self.auth_token)
 
