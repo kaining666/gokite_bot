@@ -6,6 +6,8 @@ from web3 import Web3
 from eth_account.messages import encode_defunct
 from loguru import logger
 import re
+from urllib.parse import urlparse, parse_qs
+
 
 class gokit_bot(object):
     def __init__(self,address,private_key,proxy=None):
@@ -37,7 +39,7 @@ class gokit_bot(object):
 
 
     #发送request请求
-    def send_request(self, method, url, headers=None, params=None, data=None, json_data=None, timeout=10, retries=3, delay=1):
+    def send_request(self, method, url, headers=None, params=None, data=None, json_data=None, cookies=None,timeout=10, retries=3, delay=1):
         attempt = 0
         while attempt < retries:
             try:
@@ -51,7 +53,8 @@ class gokit_bot(object):
                     json=json_data,
                     timeout=timeout,
                     proxies=self.proxy,
-                    allow_redirects= True
+                    allow_redirects= True,
+                    cookies=cookies
                 )
                 response.raise_for_status()  # 如果返回的HTTP状态码不是200，将抛出异常
                 try:
@@ -173,15 +176,33 @@ class gokit_bot(object):
                 "social": f"{data}"
             }
         )
-        payload = oauth["payload"]
-        # 使用正则表达式提取 oauth_token
-        match = re.search(r"oauth_token=([A-Za-z0-9_-]+)", payload)
-        if match:
-            oauth_token = match.group(1)
-            return oauth_token
-        else:
-            logger.error("oauth_token not found")
-            return None
+        if data == 'twitter':
+            payload = oauth["payload"]
+            # 使用正则表达式提取 oauth_token
+            match = re.search(r"oauth_token=([A-Za-z0-9_-]+)", payload)
+            if match:
+                oauth_token = match.group(1)
+                return oauth_token
+            else:
+                logger.error("oauth_token not found")
+                return None
+        if data == "discord":
+            try:
+                payload = oauth["payload"]
+                # match = re.search(r"",payload)
+                # 解析URL中的查询参数
+                parsed_url = urlparse(payload)
+                params = parse_qs(parsed_url.query)
+
+                # 将参数值转换为字符串（因为parse_qs会返回列表）
+                params = {key: value[0] for key, value in params.items()}
+                logger.success("获取discord的oauth成功")
+                return params
+            except Exception as e:
+                logger.error(e)
+                return None
+
+
     #电报任务（假提交）
     def tel_mission(self):
         response = self.send_request(
@@ -219,3 +240,53 @@ class gokit_bot(object):
         except:
             logger.error('验证twitter失败')
             return False
+
+    def submit_discord_token(self,data,discord_token):
+        try:
+            self.headers.update({
+                "Authorization":discord_token,
+                "Content-Type":"application/json"
+            })
+            response = self.send_request(
+                method="POST",
+                url='https://discord.com/api/v9/oauth2/authorize',
+                headers=self.headers,
+                json_data={
+                    "permissions": '0',
+                    "authorize": "true",
+                    "integration_type": "0"
+                },
+                params={
+                    "client_id":data["client_id"],
+                    "response_type":data["response_type"],
+                    "redirect_uri":data["redirect_uri"],
+                    "scope":data["scope"],
+                    "state":data["state"]
+                }
+            )
+            dc_url = response["location"]
+            # 解析URL中的查询参数
+            parsed_url = urlparse(dc_url)
+            params = parse_qs(parsed_url.query)
+
+            # 将参数值转换为字符串（因为parse_qs会返回列表）
+            params = {key: value[0] for key, value in params.items()}
+            submit = self.send_request(
+                method="GET",
+                headers=self.headers,
+                url='https://api-kiteai.bonusblock.io/oauth/callback/discord',
+                params={
+                    "code":params["code"],
+                    "state":params["state"]
+                },
+                json_data={
+                    "now": self.get_timestamp()
+                }
+            )
+            if submit:
+                logger.success("连接discord成功")
+            else:
+                logger.error("discord连接失败")
+        except Exception as e:
+            logger.error(f"discord连接失败：{e}")
+
