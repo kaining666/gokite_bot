@@ -22,9 +22,10 @@ class XAuth:
     def __init__(self, auth_token: str,proxy=None):
         """初始化XAuth实例"""
         self.auth_token = auth_token
+        self.proxy = proxy
         self.session = self._create_session()
         self.session2 = self._create_session(include_twitter_headers=False)
-        self.proxy = proxy
+
 
     def _create_session(self, include_twitter_headers: bool = True) -> requests.Session:
         """创建配置好的requests session"""
