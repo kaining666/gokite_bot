@@ -3,8 +3,9 @@ from bot_proxy import ProxyChecker
 from utils import DataProviderFromFile
 from wallet import EthereumWallet
 from xAuth import XAuth
+import os
 
-xfile = '/Users/ykn/PycharmProjects/gokite_bot/twitter_token.txt'
+xfile = os.path.abspath('twitter_token.txt')
 
 def register():
     wallet_manager = EthereumWallet()
