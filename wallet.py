@@ -26,3 +26,7 @@ class EthereumWallet:
             file.write(wallet_data + "\n")
         logger.info(f"Wallet data saved to {self.filename}")
 
+if __name__ == '__main__':
+    eth = EthereumWallet()
+    wallet = eth.generate_wallet()
+    print(wallet)
